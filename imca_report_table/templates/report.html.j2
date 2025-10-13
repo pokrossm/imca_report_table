@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }}</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --ok-color: #1b998b;
+      --warn-color: #f0a202;
+      --error-color: #d1495b;
+      --bg-color: #f7f9fc;
+      --card-bg: #ffffff;
+      --border-color: #d9e2ec;
+      --text-color: #102a43;
+      --muted-color: #627d98;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 2rem;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      overflow-x: auto;
+    }
+
+    h1, h2, h3 {
+      margin-top: 0;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .summary__card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1rem;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+    }
+
+    .summary__value {
+      font-size: 1.6rem;
+      font-weight: 600;
+    }
+
+    .summary__label {
+      color: var(--muted-color);
+      font-size: 0.9rem;
+    }
+
+    .trip-section {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    details {
+      margin-bottom: 1rem;
+    }
+
+    summary {
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .status-ok {
+      color: var(--ok-color);
+    }
+
+    .status-missing {
+      color: var(--error-color);
+      font-weight: 600;
+    }
+
+    .status-extra {
+      color: var(--warn-color);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+
+    th, td {
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.6rem;
+      white-space: nowrap;
+    }
+
+    th {
+      font-size: 0.95rem;
+      color: var(--muted-color);
+    }
+
+    .table-wrapper td ul {
+      white-space: normal;
+    }
+
+    .collection-header {
+      margin-top: 0.5rem;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+
+    .table-wrapper {
+      width: 100%;
+    }
+
+    .table-wrapper table {
+      width: 100%;
+      min-width: 1400px;
+    }
+
+    .preview-grid {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 1rem;
+      overflow-x: auto;
+    }
+
+    .preview-figure {
+      margin: 0;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .preview-figure img {
+      max-width: 600px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.15);
+    }
+
+    .preview-figure figcaption {
+      margin-top: 0.4rem;
+      font-size: 0.75rem;
+      color: var(--muted-color);
+      text-align: center;
+      word-break: break-word;
+    }
+
+    .missing-previews {
+      margin-top: 0.4rem;
+    }
+
+    .missing-note {
+      color: var(--error-color);
+      font-size: 0.85rem;
+      font-weight: 600;
+      white-space: normal;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>{{ title }}</h1>
+    <p>Trip directory: <code>{{ result.trip.path }}</code></p>
+    <p>Generated at: {{ generated_at.astimezone().strftime("%Y-%m-%d %H:%M:%S %Z") }}</p>
+    <p>Status:
+      {% if result.all_expected_present %}
+        <span class="status-ok">All expected directories found</span>
+      {% else %}
+        <span class="status-missing">Missing directories detected</span>
+      {% endif %}
+    </p>
+  </header>
+
+  <section class="summary">
+    <div class="summary__card">
+      <div class="summary__value">{{ stats.sites }}</div>
+      <div class="summary__label">Sites</div>
+    </div>
+    <div class="summary__card">
+      <div class="summary__value">{{ stats.pucks }}</div>
+      <div class="summary__label">Pucks</div>
+    </div>
+    <div class="summary__card">
+      <div class="summary__value">{{ stats.pins }}</div>
+      <div class="summary__label">Pins</div>
+    </div>
+    <div class="summary__card">
+      <div class="summary__value">{{ stats.collections }}</div>
+      <div class="summary__label">Collections</div>
+    </div>
+    <div class="summary__card">
+      <div class="summary__value">{{ stats.pins_with_issues }}</div>
+      <div class="summary__label">Pins with Issues</div>
+    </div>
+  </section>
+
+  <section class="trip-section">
+    {% if not result.trip.sites %}
+      <p>No sites found under the provided trip directory.</p>
+    {% endif %}
+    {% for site in result.trip.sites %}
+      <details open>
+        <summary>Site: {{ site.name }}</summary>
+        {% for puck in site.pucks %}
+          <details>
+            <summary>Puck: {{ puck.name }}</summary>
+            {% for pin in puck.pins %}
+              <details>
+                <summary>
+                  Pin: {{ pin.name }}
+                  {% if pin.missing_collections %}
+                    <span class="status-missing">• missing lettered collections</span>
+                  {% elif pin.has_issues %}
+                    <span class="status-extra">• review collection status</span>
+                  {% endif %}
+                </summary>
+                {% if pin.missing_collections %}
+                  <p class="status-missing">No lettered collection directories found.</p>
+                {% else %}
+                  {% for collection in pin.collections %}
+                    <div class="collection-header">Collection {{ collection.name }} — <code>{{ collection.path }}</code></div>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Expected Directory</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for expected in collection.expected %}
+                          <tr>
+                            <td>{{ expected.name }}</td>
+                            <td>
+                              {% if expected.present %}
+                                <span class="status-ok">{{ expected.status_label }}</span>
+                              {% else %}
+                                <span class="status-missing">{{ expected.status_label }}</span>
+                              {% endif %}
+                            </td>
+                          </tr>
+                        {% endfor %}
+                        {% for extra in collection.extras %}
+                          <tr>
+                            <td>{{ extra }}</td>
+                            <td><span class="status-extra">extra</span></td>
+                          </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  {% endfor %}
+                {% endif %}
+              </details>
+            {% endfor %}
+          </details>
+        {% endfor %}
+      </details>
+    {% endfor %}
+  </section>
+
+  <section class="trip-section">
+    <h2>Collections Overview</h2>
+    {% if not flattened_rows %}
+      <p>No collection rows to display.</p>
+    {% else %}
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Site</th>
+              <th>Puck</th>
+              <th>Pin</th>
+              <th>Collection</th>
+              <th>Issues</th>
+              {% for column in camera_preview_columns %}
+                <th>{{ column.header }}</th>
+              {% endfor %}
+              {% for column in processing_preview_columns %}
+                <th>{{ column.header }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in flattened_rows %}
+              <tr>
+                <td>{{ row.site }}</td>
+                <td>{{ row.puck }}</td>
+                <td>
+                  {{ row.pin }}
+                  {% if row.pin_missing_collections %}
+                    <span class="status-missing">⚠ missing collections</span>
+                  {% endif %}
+                </td>
+                <td>{{ row.collection }}</td>
+                <td>
+                  {% if row.issues %}
+                    <ul>
+                      {% for issue in row.issues %}
+                        <li>
+                          {% if 'Missing' in issue %}
+                            <span class="status-missing">{{ issue }}</span>
+                          {% elif 'Extras' in issue %}
+                            <span class="status-extra">{{ issue }}</span>
+                          {% else %}
+                            <span class="status-missing">{{ issue }}</span>
+                          {% endif %}
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  {% else %}
+                    <span class="status-ok">All expected directories present</span>
+                {% endif %}
+              </td>
+              {% for column in camera_preview_columns %}
+                {% set preview = row.camera_preview_cells.get(column.key) %}
+                <td>
+                  {% if preview %}
+                    <figure class="preview-figure">
+                      <img src="{{ preview.data_uri }}" alt="{{ preview.basename }}">
+                      <figcaption>{{ preview.basename }}</figcaption>
+                    </figure>
+                  {% else %}
+                    <div class="missing-note">Missing {{ column.missing }}</div>
+                  {% endif %}
+                </td>
+              {% endfor %}
+              {% for column in processing_preview_columns %}
+                {% set preview = row.processing_summary_cells.get(column.key) %}
+                <td>
+                  {% if preview %}
+                    <figure class="preview-figure">
+                      <img src="{{ preview.data_uri }}" alt="{{ preview.basename }}">
+                      <figcaption>{{ preview.basename }}</figcaption>
+                    </figure>
+                  {% else %}
+                    <div class="missing-note">Missing {{ column.missing }}</div>
+                  {% endif %}
+                </td>
+              {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </section>
+</body>
+</html>

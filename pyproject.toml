@@ -1,0 +1,45 @@
+[project]
+name = "imca-report-table"
+version = "0.1.0"
+description = "Traverse IMCA trip directories and render console/HTML status reports."
+readme = "README.md"
+authors = [
+    { name = "IMCA Pipeline Team" },
+]
+license = { text = "MIT" }
+requires-python = ">=3.12"
+dependencies = [
+    "rich>=13.7.0",
+    "jinja2>=3.1.0",
+]
+keywords = ["imca", "x-ray", "reporting", "rich", "jinja2"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Utilities",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "rich>=13.7.0",
+    "jinja2>=3.1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-org/imca-report-table"
+Repository = "https://github.com/your-org/imca-report-table"
+Issues = "https://github.com/your-org/imca-report-table/issues"
+
+[project.scripts]
+imca-report-table = "imca_report_table.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["imca_report_table*"]
+
+[tool.setuptools.package-data]
+imca_report_table = ["templates/*.j2"]
