@@ -10,6 +10,8 @@ Utilities for inspecting IMCA trip directories, validating their structure, and 
 
 ## Installation
 ```bash
+git clone git@github.com:pokrossm/imca_report_table.git
+cd imca_report_table
 python -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
@@ -18,6 +20,8 @@ pip install -e .
 
 ### Using `uv`
 ```bash
+git clone git@github.com:pokrossm/imca_report_table.git
+cd imca_report_table
 uv venv
 source .venv/bin/activate
 uv pip install -e .
