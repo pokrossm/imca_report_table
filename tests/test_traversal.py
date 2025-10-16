@@ -104,11 +104,13 @@ def test_flatten_collections_embeds_loop_images(tmp_path: Path) -> None:
     preview = loop_preview
     assert preview["basename"] == "loop-inter_4_000.jpeg"
     assert preview["data_uri"].startswith("data:image/")
+    assert row["camera_preview_cells"]["raster_primary"] is None
+    assert row["camera_preview_cells"]["raster_secondary"] is None
     assert row["camera_preview_missing"] == [
         "loop-inter_4_045.jpeg",
         "loop-inter_4_090.jpeg",
-        "raster_090.jpeg",
-        "raster_180.jpeg",
+        "missing_raster_1",
+        "missing_raster_2",
     ]
 
 
@@ -161,15 +163,55 @@ def test_flatten_collections_includes_raster_previews(tmp_path: Path) -> None:
     result = build_hierarchy(tmp_path)
     rows = html_render.flatten_collections(result)
     row = rows[0]
-    assert row["camera_preview_cells"]["raster_090"] is not None
-    assert row["camera_preview_cells"]["raster_090"]["basename"] == "raster_090.jpeg"
-    assert row["camera_preview_cells"]["raster_180"] is not None
-    assert row["camera_preview_cells"]["raster_180"]["basename"] == "raster_180.jpeg"
+    assert row["camera_preview_cells"]["raster_primary"] is not None
+    assert row["camera_preview_cells"]["raster_primary"]["basename"] == "raster_090.jpeg"
+    assert row["camera_preview_cells"]["raster_secondary"] is not None
+    assert row["camera_preview_cells"]["raster_secondary"]["basename"] == "raster_180.jpeg"
     assert row["camera_preview_missing"] == [
         "loop-inter_4_000.jpeg",
         "loop-inter_4_045.jpeg",
         "loop-inter_4_090.jpeg",
     ]
+
+
+def test_raster_primary_and_secondary_from_zero_ninety(tmp_path: Path) -> None:
+    create_collection(tmp_path, "site1", "puck01", "pin1", "I")
+    camera_dir = tmp_path / "site1" / "puck01" / "pin1" / "I" / "camera"
+    png_bytes = base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg=="
+    )
+    (camera_dir / "raster_000.jpeg").write_bytes(png_bytes)
+    (camera_dir / "raster_090.jpeg").write_bytes(png_bytes)
+
+    result = build_hierarchy(tmp_path)
+    rows = html_render.flatten_collections(result)
+    row = rows[0]
+    assert row["camera_preview_cells"]["raster_primary"] is not None
+    assert row["camera_preview_cells"]["raster_primary"]["basename"] == "raster_000.jpeg"
+    assert row["camera_preview_cells"]["raster_secondary"] is not None
+    assert row["camera_preview_cells"]["raster_secondary"]["basename"] == "raster_090.jpeg"
+    missing = row["camera_preview_missing"]
+    assert "missing_raster_1" not in missing
+    assert "missing_raster_2" not in missing
+
+
+def test_raster_single_image_marks_secondary_missing(tmp_path: Path) -> None:
+    create_collection(tmp_path, "site1", "puck01", "pin1", "J")
+    camera_dir = tmp_path / "site1" / "puck01" / "pin1" / "J" / "camera"
+    png_bytes = base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg=="
+    )
+    (camera_dir / "raster_090.jpeg").write_bytes(png_bytes)
+
+    result = build_hierarchy(tmp_path)
+    rows = html_render.flatten_collections(result)
+    row = rows[0]
+    assert row["camera_preview_cells"]["raster_primary"] is not None
+    assert row["camera_preview_cells"]["raster_primary"]["basename"] == "raster_090.jpeg"
+    assert row["camera_preview_cells"]["raster_secondary"] is None
+    missing = row["camera_preview_missing"]
+    assert "missing_raster_1" not in missing
+    assert "missing_raster_2" in missing
 
 
 def test_processing_summary_embedding_no_site(tmp_path: Path) -> None:

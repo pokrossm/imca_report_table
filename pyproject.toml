@@ -1,6 +1,6 @@
 [project]
 name = "imca-report-table"
-version = "0.1.0"
+version = "0.2.0"
 description = "Traverse IMCA trip directories and render console/HTML status reports."
 readme = "README.md"
 authors = [

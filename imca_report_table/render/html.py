@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import mimetypes
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Sequence
@@ -39,18 +40,20 @@ CAMERA_PREVIEW_COLUMNS: list[dict[str, str]] = [
         "missing": "loop-inter_4_090.jpeg",
     },
     {
-        "key": "raster_090",
-        "search": "raster_090",
-        "header": "Raster 90°",
-        "missing": "raster_090.jpeg",
+        "key": "raster_primary",
+        "search": None,
+        "header": "Raster 1",
+        "missing": "missing_raster_1",
     },
     {
-        "key": "raster_180",
-        "search": "raster_180",
-        "header": "Raster 180°",
-        "missing": "raster_180.jpeg",
+        "key": "raster_secondary",
+        "search": None,
+        "header": "Raster 2",
+        "missing": "missing_raster_2",
     },
 ]
+
+_RASTER_PATTERN = re.compile(r"raster_(\d+)", re.IGNORECASE)
 
 PROCESSING_PREVIEW_COLUMNS: list[dict[str, str]] = [
     {
@@ -114,17 +117,75 @@ def flatten_collections(result: HierarchyResult) -> list[dict]:
         camera_cells: dict[str, dict[str, str] | None] = {}
         camera_previews: list[dict[str, str]] = []
         used_camera_paths: set[str] = set()
-        for column in CAMERA_PREVIEW_COLUMNS:
-            search_term = column["search"]
-            candidates = [
-                preview
-                for preview in _embed_images(image_files, name_filter=search_term)
-                if preview["path"] not in used_camera_paths
+        camera_entries: list[tuple[str, str]] = [
+            (Path(path_str).name.lower(), path_str) for path_str in image_files
+        ]
+
+        def embed_candidate(path_str: str) -> dict[str, str] | None:
+            previews = _embed_images([path_str])
+            if not previews:
+                return None
+            preview = previews[0]
+            used_camera_paths.add(path_str)
+            return preview
+
+        def embed_first_match(candidates: list[str]) -> dict[str, str] | None:
+            for candidate in candidates:
+                if candidate in used_camera_paths:
+                    continue
+                preview = embed_candidate(candidate)
+                if preview is None:
+                    continue
+                return preview
+            return None
+
+        def fragments_to_paths(fragment: str | None) -> list[str]:
+            if not fragment:
+                return []
+            key = fragment.lower()
+            return [
+                path_str
+                for basename, path_str in camera_entries
+                if key in basename
             ]
-            preview = candidates[0] if candidates else None
-            if preview:
-                used_camera_paths.add(preview["path"])
+
+        def take_preview_for_name(fragment: str | None) -> dict[str, str] | None:
+            return embed_first_match(fragments_to_paths(fragment))
+
+        loop_columns = [
+            column for column in CAMERA_PREVIEW_COLUMNS if not column["key"].startswith("raster_")
+        ]
+        raster_columns = [
+            column for column in CAMERA_PREVIEW_COLUMNS if column["key"].startswith("raster_")
+        ]
+
+        for column in loop_columns:
+            preview = take_preview_for_name(column["search"])
+            camera_cells[column["key"]] = preview
+            if preview and preview not in camera_previews:
                 camera_previews.append(preview)
+
+        raster_candidates: list[tuple[int, str]] = []
+        for basename, path_str in camera_entries:
+            match = _RASTER_PATTERN.search(basename)
+            if not match:
+                continue
+            try:
+                angle = int(match.group(1))
+            except ValueError:
+                continue
+            if path_str in used_camera_paths:
+                continue
+            raster_candidates.append((angle, path_str))
+        raster_candidates.sort(key=lambda item: item[0])
+
+        for index, column in enumerate(raster_columns):
+            preview = None
+            if index < len(raster_candidates):
+                _, path_str = raster_candidates[index]
+                preview = embed_candidate(path_str)
+                if preview and preview not in camera_previews:
+                    camera_previews.append(preview)
             camera_cells[column["key"]] = preview
         row["camera_previews"] = camera_previews
         row["camera_preview_cells"] = camera_cells
