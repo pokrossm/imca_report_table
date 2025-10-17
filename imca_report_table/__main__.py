@@ -9,6 +9,7 @@ from typing import Sequence
 
 from rich.console import Console
 
+from . import __version__
 from .render.console import render_hierarchy_console
 from .render.html import render_html_report, write_html_report
 from .traversal import DEFAULT_EXPECTED_COLLECTION_DIRS, build_hierarchy
@@ -64,6 +65,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--no-site-level",
         action="store_true",
         help="Treat trip directories as containing pucks directly (no site level).",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+        help="Show the installed version and exit.",
     )
     return parser.parse_args(argv)
 
